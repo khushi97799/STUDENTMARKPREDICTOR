@@ -1,0 +1,50 @@
+version: '3.9'
+
+services:
+  # ─── PostgreSQL ────────────────────────────────────────
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: failsafe
+      POSTGRES_PASSWORD: failsafe123
+      POSTGRES_DB: failsafe_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U failsafe"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── FastAPI Backend ────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://failsafe:failsafe123@db:5432/failsafe_db
+      SECRET_KEY: failsafe_secret_2024_xgboost_secure
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml:/app/ml
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ─── Nginx (serves frontend + proxies API) ─────────────
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

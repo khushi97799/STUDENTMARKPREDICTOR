@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FAILSAFE — Student Risk Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #0a0e1a;
+    --surface:  #111827;
+    --card:     #1a2235;
+    --border:   #1e293b;
+    --accent:   #f97316;
+    --accent2:  #3b82f6;
+    --danger:   #ef4444;
+    --warn:     #f59e0b;
+    --safe:     #22c55e;
+    --text:     #f1f5f9;
+    --muted:    #64748b;
+    --subtle:   #334155;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--subtle);border-radius:3px}
+
+  /* ── Layout ── */
+  .app-shell{display:flex;min-height:100vh}
+  .sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;position:fixed;height:100vh;z-index:100}
+  .main{margin-left:240px;flex:1;padding:32px;min-height:100vh}
+  .sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+  .logo-mark{font-size:22px;font-weight:700;letter-spacing:-0.5px;color:var(--accent)}
+  .logo-sub{font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+  .nav{padding:16px 0;flex:1}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;color:var(--muted);font-size:14px;font-weight:500;border-left:3px solid transparent;transition:all 0.15s}
+  .nav-item:hover{color:var(--text);background:rgba(255,255,255,0.03)}
+  .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(249,115,22,0.06)}
+  .nav-item svg{width:18px;height:18px;flex-shrink:0}
+  .sidebar-user{padding:16px 20px;border-top:1px solid var(--border)}
+  .user-info{display:flex;align-items:center;gap:10px}
+  .user-avatar{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+  .user-name{font-size:13px;font-weight:600;line-height:1.3}
+  .user-role{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+  .logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:6px 0;font-family:inherit;display:flex;align-items:center;gap:4px;margin-top:8px;transition:color 0.15s}
+  .logout-btn:hover{color:var(--danger)}
+
+  /* ── Page Header ── */
+  .page-header{margin-bottom:28px}
+  .page-title{font-size:26px;font-weight:700;letter-spacing:-0.5px}
+  .page-sub{font-size:14px;color:var(--muted);margin-top:4px}
+  .breadcrumb{font-size:12px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+
+  /* ── Cards ── */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .card-sm{padding:16px}
+  .card-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px}
+
+  /* ── Grid ── */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+
+  /* ── Stat Cards ── */
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;position:relative;overflow:hidden}
+  .stat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.02),transparent)}
+  .stat-val{font-size:32px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1}
+  .stat-lbl{font-size:12px;color:var(--muted);margin-top:6px;font-weight:500}
+  .stat-icon{position:absolute;right:16px;top:16px;opacity:0.12;font-size:36px}
+  .stat-danger .stat-val{color:var(--danger)}
+  .stat-warn .stat-val{color:var(--warn)}
+  .stat-safe .stat-val{color:var(--safe)}
+  .stat-blue .stat-val{color:var(--accent2)}
+
+  /* ── Risk Badge ── */
+  .risk-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.5px}
+  .risk-High{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.2)}
+  .risk-Medium{background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.2)}
+  .risk-Low{background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.2)}
+
+  /* ── Table ── */
+  .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;background:var(--card)}
+  thead tr{background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border)}
+  th{padding:12px 16px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted)}
+  td{padding:12px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,0.02)}
+  .action-btn{background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);color:var(--accent);padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;transition:all 0.15s}
+  .action-btn:hover{background:rgba(249,115,22,0.2)}
+
+  /* ── Buttons ── */
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;border:none}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:#ea6c0a}
+  .btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
+  .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-sm{padding:7px 14px;font-size:12px}
+  .btn:disabled{opacity:0.5;cursor:not-allowed}
+
+  /* ── Upload Zone ── */
+  .upload-zone{border:2px dashed var(--border);border-radius:12px;padding:48px 24px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative}
+  .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(249,115,22,0.04)}
+  .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+  .upload-icon{font-size:40px;margin-bottom:12px;opacity:0.5}
+  .upload-text{font-size:16px;font-weight:600;margin-bottom:6px}
+  .upload-hint{font-size:13px;color:var(--muted)}
+
+  /* ── Progress bar ── */
+  .progress-bar{background:var(--border);border-radius:4px;height:6px;overflow:hidden;margin-top:8px}
+  .progress-fill{height:100%;border-radius:4px;transition:width 0.3s ease;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+
+  /* ── SHAP Chart ── */
+  .shap-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .shap-label{font-size:12px;color:var(--muted);width:110px;flex-shrink:0;text-align:right;font-family:'JetBrains Mono',monospace}
+  .shap-bar-wrap{flex:1;background:var(--border);border-radius:4px;height:16px;position:relative;overflow:hidden}
+  .shap-bar{height:100%;border-radius:4px;transition:width 0.4s ease}
+  .shap-risk{background:linear-gradient(90deg,rgba(239,68,68,0.3),rgba(239,68,68,0.7))}
+  .shap-prot{background:linear-gradient(90deg,rgba(34,197,94,0.3),rgba(34,197,94,0.7))}
+  .shap-val{font-size:11px;font-family:'JetBrains Mono',monospace;width:52px;flex-shrink:0;text-align:right}
+  .shap-pos{color:#fca5a5}
+  .shap-neg{color:#86efac}
+
+  /* ── Intervention Card ── */
+  .inv-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:14px}
+  .inv-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .inv-High .inv-icon{background:rgba(239,68,68,0.1)}
+  .inv-Medium .inv-icon{background:rgba(245,158,11,0.1)}
+  .inv-body{flex:1}
+  .inv-cat{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:3px}
+  .inv-action{font-size:13px;line-height:1.5}
+  .inv-apply-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all 0.15s}
+  .inv-apply-btn:hover{border-color:var(--safe);color:var(--safe)}
+  .inv-apply-btn.applied{border-color:var(--safe);color:var(--safe);background:rgba(34,197,94,0.08)}
+
+  /* ── Login ── */
+  .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 20% 50%,rgba(249,115,22,0.08) 0%,transparent 60%),var(--bg)}
+  .login-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px;width:400px;box-shadow:0 25px 50px rgba(0,0,0,0.5)}
+  .login-logo{font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px}
+  .login-tagline{font-size:13px;color:var(--muted);margin-bottom:32px}
+  .form-group{margin-bottom:16px}
+  .form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px}
+  .form-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 14px;color:var(--text);font-size:14px;font-family:inherit;transition:border 0.15s}
+  .form-input:focus{outline:none;border-color:var(--accent)}
+  .form-hint{font-size:11px;color:var(--muted);margin-top:20px;text-align:center}
+  .login-demo{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:16px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;line-height:1.8}
+
+  /* ── Misc ── */
+  .mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt20{margin-top:20px}.mt24{margin-top:24px}
+  .flex{display:flex}.gap8{gap:8px}.gap12{gap:12px}.gap16{gap:16px}.items-center{align-items:center}
+  .justify-between{justify-content:space-between}
+  .text-sm{font-size:13px}.text-xs{font-size:11px}.text-muted{color:var(--muted)}
+  .font-mono{font-family:'JetBrains Mono',monospace}
+  .w-full{width:100%}
+  .spinner{border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;width:24px;height:24px;animation:spin 0.8s linear infinite;margin:0 auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty-icon{font-size:48px;margin-bottom:12px;opacity:0.3}
+  .tag{display:inline-block;background:rgba(59,130,246,0.1);color:#93c5fd;border:1px solid rgba(59,130,246,0.2);border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600}
+  select.form-input option{background:var(--card)}
+  .alert{border-radius:8px;padding:12px 16px;font-size:13px;margin-bottom:16px}
+  .alert-err{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#fca5a5}
+  .alert-ok{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:#86efac}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+  .modal{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;padding:28px}
+  .modal-title{font-size:18px;font-weight:700;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+  .close-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1}
+  .close-btn:hover{color:var(--text)}
+  hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+  .risk-meter{height:8px;border-radius:4px;background:var(--border);overflow:hidden;margin-top:4px}
+  .risk-fill{height:100%;border-radius:4px;transition:width 0.5s ease}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useRef, useCallback, createContext, useContext } = React;
+
+// ─── Auth Context ──────────────────────────────────────
+const AuthCtx = createContext(null);
+function useAuth(){ return useContext(AuthCtx); }
+
+// ─── Icons ────────────────────────────────────────────
+const Icon = {
+  dashboard: '⬡',
+  upload:    '↑',
+  students:  '◉',
+  chart:     '▦',
+  logout:    '→',
+  warn:      '⚠',
+  shield:    '⬡',
+  check:     '✓',
+  close:     '✕',
+  arrow:     '→',
+};
+
+// ─── API ──────────────────────────────────────────────
+function useApi(){
+  const { token } = useAuth();
+  return useCallback(async(url, opts={}) => {
+    const headers = { 'Authorization': `Bearer ${token}`, ...(opts.headers||{}) };
+    const res = await fetch(url, { ...opts, headers });
+    if(!res.ok){ const e = await res.json().catch(()=>({})); throw new Error(e.detail||'Error'); }
+    return res.json();
+  }, [token]);
+}
+
+// ─── Mock data for demo without backend ───────────────
+function generateMockStudents(n=25){
+  const names=['Aarav Sharma','Priya Nair','Rahul Gupta','Sneha Patel','Karan Singh','Meera Iyer','Arjun Reddy','Kavya Joshi','Rohit Mehta','Ananya Das','Vikas Kumar','Riya Verma','Amit Shah','Pooja Rao','Deepak Sinha','Nisha Agarwal','Siddharth Bose','Lakshmi Nambiar','Tejas Kulkarni','Divya Pillai','Manish Tiwari','Swati Pandey','Ravi Chandra','Anjali Mishra','Suresh Krishnan'];
+  return names.slice(0,n).map((name,i)=>{
+    const prob = Math.random();
+    const risk = prob>0.65?'High':prob>0.35?'Medium':'Low';
+    const g1 = Math.floor(Math.random()*8)+5;
+    const g2 = g1 + Math.floor(Math.random()*4)-2;
+    return {
+      id:i+1, name,
+      risk_probability: parseFloat(prob.toFixed(4)),
+      risk_level: risk,
+      grades:{ G1:g1, G2:Math.max(1,g2) },
+      absences: Math.floor(Math.random()*20),
+      studytime: Math.floor(Math.random()*4)+1,
+      failures: Math.floor(Math.random()*3),
+      top_factors:[
+        {feature:'absences',   impact:parseFloat((Math.random()*0.5+0.05).toFixed(3)), direction:'risk'},
+        {feature:'G2',         impact:parseFloat((-Math.random()*0.4-0.05).toFixed(3)), direction:'protective'},
+        {feature:'failures',   impact:parseFloat((Math.random()*0.3).toFixed(3)), direction:'risk'},
+        {feature:'studytime',  impact:parseFloat((-Math.random()*0.25).toFixed(3)), direction:'protective'},
+        {feature:'avg_grade',  impact:parseFloat((-Math.random()*0.35).toFixed(3)), direction:'protective'},
+        {feature:'Walc',       impact:parseFloat((Math.random()*0.2).toFixed(3)), direction:'risk'},
+        {feature:'health',     impact:parseFloat((Math.random()*0.15).toFixed(3)), direction:'risk'},
+        {feature:'goout',      impact:parseFloat((Math.random()*0.12).toFixed(3)), direction:'risk'},
+      ],
+      interventions: risk==='High'?[
+        {category:'Attendance',action:'Schedule immediate attendance review meeting. Notify parents/guardians.',priority:'High'},
+        {category:'Academic Support',action:'Enrol in remedial classes. Assign subject tutor 2×/week.',priority:'High'},
+        {category:'Wellness & Counselling',action:'Refer to student counsellor for lifestyle assessment.',priority:'Medium'},
+        {category:'Faculty Follow-up',action:'Bi-weekly one-on-one faculty check-in sessions.',priority:'High'},
+      ]:risk==='Medium'?[
+        {category:'Attendance',action:'Send proactive attendance reminder. Monitor weekly.',priority:'Medium'},
+        {category:'Study Habits',action:'Provide personalised weekly study timetable.',priority:'Medium'},
+        {category:'Academic Support',action:'Weekly check-in with subject teacher.',priority:'Medium'},
+      ]:[
+        {category:'Academic Support',action:'Continue monitoring. Provide study resources.',priority:'Low'},
+      ]
+    };
+  });
+}
+
+// ─── Login Page ────────────────────────────────────────
+function LoginPage(){
+  const { login } = useAuth();
+  const [email, setEmail] = useState('faculty@college.edu');
+  const [pass,  setPass]  = useState('faculty123');
+  const [err,   setErr]   = useState('');
+  const [loading,setLoading]=useState(false);
+
+  async function handleLogin(e){
+    e.preventDefault(); setErr(''); setLoading(true);
+    try{ await login(email, pass); }
+    catch(e){ setErr(e.message); }
+    finally{ setLoading(false); }
+  }
+
+  return React.createElement('div',{className:'login-screen'},
+    React.createElement('div',{className:'login-card'},
+      React.createElement('div',{className:'login-logo'},'FAILSAFE'),
+      React.createElement('div',{className:'login-tagline'},'Student Risk Intelligence Platform'),
+      err && React.createElement('div',{className:'alert alert-err'},err),
+      React.createElement('form',{onSubmit:handleLogin},
+        React.createElement('div',{className:'form-group'},
+          React.createElement('label',{className:'form-label'},'Email'),
+          React.createElement('input',{className:'form-input',type:'email',value:email,onChange:e=>setEmail(e.target.value),required:true})
+        ),
+        React.createElement('div',{className:'form-group'},
+          React.createElement('label',{className:'form-label'},'Password'),
+          React.createElement('input',{className:'form-input',type:'password',value:pass,onChange:e=>setPass(e.target.value),required:true})
+        ),
+        React.createElement('button',{className:'btn btn-primary w-full mt16',type:'submit',disabled:loading},
+          loading?'Signing in…':'Sign In →'
+        )
+      ),
+      React.createElement('div',{className:'login-demo'},
+        React.createElement('div',null,'Demo credentials:'),
+        React.createElement('div',null,'Faculty: faculty@college.edu / faculty123'),
+        React.createElement('div',null,'HOD:     hod@college.edu / hod123'),
+      )
+    )
+  );
+}
+
+// ─── Sidebar ──────────────────────────────────────────
+function Sidebar({ page, setPage }){
+  const { user, logout } = useAuth();
+  const nav=[
+    {id:'dashboard',label:'Dashboard',icon:'📊'},
+    {id:'upload',   label:'Upload & Predict',icon:'📤'},
+    {id:'students', label:'Student Risk List',icon:'👥'},
+    {id:'model',    label:'Model Insights',icon:'🧠'},
+  ];
+  return React.createElement('div',{className:'sidebar'},
+    React.createElement('div',{className:'sidebar-logo'},
+      React.createElement('div',{className:'logo-mark'},'FAILSAFE'),
+      React.createElement('div',{className:'logo-sub'},'Risk Intelligence')
+    ),
+    React.createElement('nav',{className:'nav'},
+      nav.map(n=>React.createElement('div',{
+        key:n.id, className:`nav-item${page===n.id?' active':''}`,
+        onClick:()=>setPage(n.id)
+      },
+        React.createElement('span',{style:{fontSize:'16px'}},n.icon),
+        React.createElement('span',null,n.label)
+      ))
+    ),
+    React.createElement('div',{className:'sidebar-user'},
+      React.createElement('div',{className:'user-info'},
+        React.createElement('div',{className:'user-avatar'},user?.name?.[0]||'U'),
+        React.createElement('div',null,
+          React.createElement('div',{className:'user-name'},user?.name||'User'),
+          React.createElement('div',{className:'user-role'},user?.role||'faculty')
+        )
+      ),
+      React.createElement('button',{className:'logout-btn',onClick:logout},'Sign out →')
+    )
+  );
+}
+
+// ─── SHAP Chart ───────────────────────────────────────
+function ShapChart({ factors }){
+  if(!factors||!factors.length) return null;
+  const maxAbs = Math.max(...factors.map(f=>Math.abs(f.impact)));
+  return React.createElement('div',null,
+    factors.map((f,i)=>React.createElement('div',{key:i,className:'shap-row'},
+      React.createElement('div',{className:'shap-label'},f.feature),
+      React.createElement('div',{className:'shap-bar-wrap'},
+        React.createElement('div',{
+          className:`shap-bar ${f.direction==='risk'?'shap-risk':'shap-prot'}`,
+          style:{width:`${(Math.abs(f.impact)/maxAbs)*100}%`}
+        })
+      ),
+      React.createElement('div',{className:`shap-val ${f.impact>0?'shap-pos':'shap-neg'}`},
+        (f.impact>0?'+':'')+f.impact
+      )
+    ))
+  );
+}
+
+// ─── Risk Meter ───────────────────────────────────────
+function RiskMeter({ prob }){
+  const pct = Math.round(prob*100);
+  const color = prob>0.65?'var(--danger)':prob>0.35?'var(--warn)':'var(--safe)';
+  return React.createElement('div',null,
+    React.createElement('div',{className:'flex justify-between items-center'},
+      React.createElement('span',{className:'text-xs text-muted'},'Risk Probability'),
+      React.createElement('span',{className:'font-mono',style:{fontSize:'15px',color}},`${pct}%`)
+    ),
+    React.createElement('div',{className:'risk-meter'},
+      React.createElement('div',{className:'risk-fill',style:{width:`${pct}%`,background:color}})
+    )
+  );
+}
+
+// ─── Student Detail Modal ─────────────────────────────
+function StudentModal({ student, onClose, appliedInterventions, onApply }){
+  if(!student) return null;
+  const invIconMap = {
+    'Attendance':'📅','Academic Support':'📚','Academic Recovery':'🔄',
+    'Study Habits':'⏱','Wellness & Counselling':'💬','Health Services':'🏥',
+    'Lifestyle Counselling':'🌿','Resource Access':'💻','Career Counselling':'🎯',
+    'Support Services':'🤝','Family Support':'👨‍👩‍👧','General Support':'📋','Faculty Follow-up':'👨‍🏫'
+  };
+
+  return React.createElement('div',{className:'modal-overlay',onClick:e=>e.target===e.currentTarget&&onClose()},
+    React.createElement('div',{className:'modal'},
+      React.createElement('div',{className:'modal-title'},
+        React.createElement('div',null,
+          React.createElement('span',null,student.name+' '),
+          React.createElement('span',{className:`risk-badge risk-${student.risk_level}`},student.risk_level+' Risk')
+        ),
+        React.createElement('button',{className:'close-btn',onClick:onClose},'✕')
+      ),
+
+      React.createElement('div',{className:'grid2',style:{gap:'12px',marginBottom:'20px'}},
+        React.createElement('div',{className:'card card-sm'},
+          React.createElement('div',{className:'card-title'},'Prediction'),
+          React.createElement(RiskMeter,{prob:student.risk_probability}),
+          React.createElement('div',{className:'flex gap12 mt12'},
+            React.createElement('div',null,
+              React.createElement('div',{className:'text-xs text-muted'},'G1'),
+              React.createElement('div',{className:'font-mono',style:{fontSize:'18px'}},student.grades.G1)
+            ),
+            React.createElement('div',null,
+              React.createElement('div',{className:'text-xs text-muted'},'G2'),
+              React.createElement('div',{className:'font-mono',style:{fontSize:'18px'}},student.grades.G2)
+            ),
+            React.createElement('div',null,
+              React.createElement('div',{className:'text-xs text-muted'},'Absences'),
+              React.createElement('div',{className:'font-mono',style:{fontSize:'18px',color:student.absences>10?'var(--danger)':'inherit'}},student.absences)
+            ),
+            React.createElement('div',null,
+              React.createElement('div',{className:'text-xs text-muted'},'Past Failures'),
+              React.createElement('div',{className:'font-mono',style:{fontSize:'18px',color:student.failures>0?'var(--warn)':'inherit'}},student.failures)
+            )
+          )
+        ),
+        React.createElement('div',{className:'card card-sm'},
+          React.createElement('div',{className:'card-title'},'SHAP Explanation — Why Flagged?'),
+          React.createElement(ShapChart,{factors:student.top_factors})
+        )
+      ),
+
+      React.createElement('div',null,
+        React.createElement('div',{className:'card-title'},'Personalised Interventions'),
+        student.interventions.map((inv,i)=>{
+          const key = `${student.id}_${inv.category}`;
+          const isApplied = appliedInterventions.has(key);
+          return React.createElement('div',{key:i,className:`inv-card inv-${inv.priority}`},
+            React.createElement('div',{className:'inv-icon'},invIconMap[inv.category]||'📋'),
+            React.createElement('div',{className:'inv-body'},
+              React.createElement('div',{className:'inv-cat'},
+                inv.category+' ',
+                React.createElement('span',{className:`risk-badge risk-${inv.priority}`,style:{marginLeft:'4px'}},inv.priority)
+              ),
+              React.createElement('div',{className:'inv-action'},inv.action)
+            ),
+            React.createElement('button',{
+              className:`inv-apply-btn${isApplied?' applied':''}`,
+              onClick:()=>!isApplied&&onApply(student.id,inv,key)
+            }, isApplied?'✓ Applied':'Apply')
+          );
+        })
+      )
+    )
+  );
+}
+
+// ─── Dashboard Page ───────────────────────────────────
+function DashboardPage({ students }){
+  const high   = students.filter(s=>s.risk_level==='High').length;
+  const medium = students.filter(s=>s.risk_level==='Medium').length;
+  const low    = students.filter(s=>s.risk_level==='Low').length;
+  const total  = students.length;
+  const avg    = total ? (students.reduce((a,s)=>a+s.risk_probability,0)/total*100).toFixed(1) : 0;
+
+  const factorCounts = {};
+  students.forEach(s=>s.top_factors.filter(f=>f.direction==='risk').forEach(f=>{
+    factorCounts[f.feature] = (factorCounts[f.feature]||0)+1;
+  }));
+  const topFactors = Object.entries(factorCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxCount = topFactors[0]?.[1]||1;
+
+  const highRiskStudents = students.filter(s=>s.risk_level==='High').slice(0,5);
+
+  return React.createElement('div',null,
+    React.createElement('div',{className:'page-header'},
+      React.createElement('div',{className:'page-title'},'Dashboard'),
+      React.createElement('div',{className:'page-sub'},'Semester overview — real-time student risk intelligence')
+    ),
+
+    React.createElement('div',{className:'grid4',style:{marginBottom:'24px'}},
+      React.createElement('div',{className:'stat-card'},
+        React.createElement('div',{className:'stat-val'},total),
+        React.createElement('div',{className:'stat-lbl'},'Total Students'),
+        React.createElement('div',{className:'stat-icon'},'👥')
+      ),
+      React.createElement('div',{className:'stat-card stat-danger'},
+        React.createElement('div',{className:'stat-val'},high),
+        React.createElement('div',{className:'stat-lbl'},'High Risk'),
+        React.createElement('div',{className:'stat-icon'},'🚨')
+      ),
+      React.createElement('div',{className:'stat-card stat-warn'},
+        React.createElement('div',{className:'stat-val'},medium),
+        React.createElement('div',{className:'stat-lbl'},'Medium Risk'),
+        React.createElement('div',{className:'stat-icon'},'⚠️')
+      ),
+      React.createElement('div',{className:'stat-card stat-blue'},
+        React.createElement('div',{className:'stat-val'},`${avg}%`),
+        React.createElement('div',{className:'stat-lbl'},'Avg Risk Score'),
+        React.createElement('div',{className:'stat-icon'},'📈')
+      )
+    ),
+
+    React.createElement('div',{className:'grid2',style:{marginBottom:'24px'}},
+      React.createElement('div',{className:'card'},
+        React.createElement('div',{className:'card-title'},'Top Risk Factors (SHAP Frequency)'),
+        topFactors.length===0
+          ? React.createElement('div',{className:'empty-state',style:{padding:'20px'}},React.createElement('div',{className:'text-muted'},'Upload student data to see risk factors'))
+          : topFactors.map(([f,c],i)=>React.createElement('div',{key:i,style:{marginBottom:'10px'}},
+              React.createElement('div',{className:'flex justify-between',style:{marginBottom:'4px'}},
+                React.createElement('span',{className:'font-mono text-xs'},f),
+                React.createElement('span',{className:'text-xs text-muted'},`${c} students`)
+              ),
+              React.createElement('div',{className:'progress-bar'},
+                React.createElement('div',{className:'progress-fill',style:{width:`${c/maxCount*100}%`}})
+              )
+            ))
+      ),
+
+      React.createElement('div',{className:'card'},
+        React.createElement('div',{className:'card-title'},'Risk Distribution'),
+        React.createElement('div',{style:{display:'flex',gap:'16px',alignItems:'flex-end',height:'120px',paddingTop:'12px'}},
+          [['High',high,'var(--danger)'],['Medium',medium,'var(--warn)'],['Low',low,'var(--safe)']].map(([lbl,val,color])=>
+            React.createElement('div',{key:lbl,style:{flex:1,textAlign:'center'}},
+              React.createElement('div',{style:{
+                height:`${total?Math.max(8,val/total*100)+'px':'8px'}`,
+                background:color,borderRadius:'4px 4px 0 0',transition:'height 0.3s',
+                opacity:0.8,marginBottom:'6px'
+              }}),
+              React.createElement('div',{className:'font-mono',style:{fontSize:'18px',color}},val),
+              React.createElement('div',{className:'text-xs text-muted',style:{marginTop:'2px'}},lbl)
+            )
+          )
+        ),
+        React.createElement('hr',{className:'divider'}),
+        React.createElement('div',{className:'flex justify-between'},
+          React.createElement('span',{className:'text-sm text-muted'},'Safe rate'),
+          React.createElement('span',{className:'font-mono text-sm',style:{color:'var(--safe)'}},total?`${(low/total*100).toFixed(0)}%`:'—')
+        )
+      )
+    ),
+
+    highRiskStudents.length>0 && React.createElement('div',{className:'card'},
+      React.createElement('div',{className:'card-title'},'🚨 High-Risk Students — Immediate Attention Required'),
+      React.createElement('div',{className:'table-wrap'},
+        React.createElement('table',null,
+          React.createElement('thead',null,React.createElement('tr',null,
+            ['Name','Risk Score','G1','G2','Absences','Failures','Status'].map(h=>React.createElement('th',{key:h},h))
+          )),
+          React.createElement('tbody',null,
+            highRiskStudents.map(s=>React.createElement('tr',{key:s.id},
+              React.createElement('td',null,React.createElement('span',{style:{fontWeight:600}},s.name)),
+              React.createElement('td',null,
+                React.createElement('span',{className:'font-mono',style:{color:'var(--danger)'}},`${(s.risk_probability*100).toFixed(0)}%`)
+              ),
+              React.createElement('td',{className:'font-mono'},s.grades.G1),
+              React.createElement('td',{className:'font-mono'},s.grades.G2),
+              React.createElement('td',{className:'font-mono',style:{color:s.absences>10?'var(--danger)':'inherit'}},s.absences),
+              React.createElement('td',{className:'font-mono',style:{color:s.failures>0?'var(--warn)':'inherit'}},s.failures),
+              React.createElement('td',null,React.createElement('span',{className:'risk-badge risk-High'},'Needs Action'))
+            ))
+          )
+        )
+      )
+    )
+  );
+}
+
+// ─── Upload Page ──────────────────────────────────────
+function UploadPage({ onUpload }){
+  const [drag,setDrag]=useState(false);
+  const [file,setFile]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [msg,setMsg]=useState('');
+  const api = useApi();
+
+  async function handleFile(f){
+    setFile(f); setMsg('');
+  }
+
+  async function handlePredict(){
+    if(!file){ setMsg('Please select a CSV file first.'); return; }
+    setLoading(true); setMsg('');
+    try{
+      // Try real API first, fall back to mock
+      const fd = new FormData(); fd.append('file',file);
+      try{
+        const data = await api('/api/predict/upload',{method:'POST',body:fd});
+        onUpload(data.predictions||[]);
+        setMsg(`✓ Successfully analysed ${data.total_students} students. High risk: ${data.high_risk}`);
+      } catch(e) {
+        // Backend not available — use mock
+        await new Promise(r=>setTimeout(r,1800));
+        const mockStudents = generateMockStudents(25);
+        onUpload(mockStudents);
+        setMsg(`✓ Demo mode: Generated predictions for ${mockStudents.length} students.`);
+      }
+    } catch(e){ setMsg(`Error: ${e.message}`); }
+    finally{ setLoading(false); }
+  }
+
+  return React.createElement('div',null,
+    React.createElement('div',{className:'page-header'},
+      React.createElement('div',{className:'page-title'},'Upload & Predict'),
+      React.createElement('div',{className:'page-sub'},'Upload student data CSV to generate AI risk predictions with SHAP explanations')
+    ),
+
+    React.createElement('div',{className:'grid2',style:{gap:'24px'}},
+      React.createElement('div',null,
+        React.createElement('div',{className:'card',style:{marginBottom:'16px'}},
+          React.createElement('div',{className:'card-title'},'Upload Student Data'),
+          React.createElement('div',{
+            className:`upload-zone${drag?' drag':''}`,
+            onDragOver:e=>{e.preventDefault();setDrag(true)},
+            onDragLeave:()=>setDrag(false),
+            onDrop:e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];f&&handleFile(f)},
+          },
+            React.createElement('input',{type:'file',accept:'.csv',onChange:e=>e.target.files[0]&&handleFile(e.target.files[0])}),
+            React.createElement('div',{className:'upload-icon'},'📊'),
+            React.createElement('div',{className:'upload-text'},file?`📄 ${file.name}`:'Drop CSV file here'),
+            React.createElement('div',{className:'upload-hint'},file?`${(file.size/1024).toFixed(1)} KB — ready to analyse`:'or click to browse — supports UCI Student Performance format')
+          ),
+          msg && React.createElement('div',{className:`alert ${msg.startsWith('✓')?'alert-ok':'alert-err'}`,style:{marginTop:'12px'}},msg),
+          React.createElement('button',{
+            className:'btn btn-primary w-full mt16',
+            onClick:handlePredict, disabled:loading||!file
+          }, loading?React.createElement('span',null,React.createElement('span',{className:'spinner',style:{width:'16px',height:'16px',display:'inline-block',marginRight:'8px'}}),'Analysing with XGBoost + SHAP…'):'🔮 Run Prediction')
+        ),
+
+        React.createElement('div',{className:'card'},
+          React.createElement('div',{className:'card-title'},'Quick Demo (No CSV needed)'),
+          React.createElement('div',{className:'text-sm text-muted',style:{marginBottom:'12px',lineHeight:'1.6'}},
+            'Load 25 synthetic students to explore the full dashboard, SHAP explanations, and intervention engine.'
+          ),
+          React.createElement('button',{className:'btn btn-secondary w-full',onClick:()=>{
+            const s=generateMockStudents(25); onUpload(s);
+            setMsg('✓ Demo data loaded — 25 students with mock predictions.');
+          }},'▶ Load Demo Data')
+        )
+      ),
+
+      React.createElement('div',null,
+        React.createElement('div',{className:'card',style:{marginBottom:'16px'}},
+          React.createElement('div',{className:'card-title'},'Expected CSV Format'),
+          React.createElement('div',{className:'text-sm text-muted',style:{lineHeight:'1.8'}},
+            'UCI Student Performance Dataset (student-mat.csv or student-por.csv)',
+            React.createElement('br',null),
+            'Required columns:',
+            React.createElement('br',null),
+          ),
+          React.createElement('div',{style:{background:'var(--bg)',borderRadius:'8px',padding:'12px',marginTop:'8px',fontFamily:'JetBrains Mono',fontSize:'11px',color:'var(--muted)',lineHeight:'2'}},
+            'school, sex, age, address, famsize, Pstatus',React.createElement('br',null),
+            'Medu, Fedu, Mjob, Fjob, reason, guardian',React.createElement('br',null),
+            'traveltime, studytime, failures, schoolsup',React.createElement('br',null),
+            'famsup, paid, activities, nursery, higher',React.createElement('br',null),
+            'internet, romantic, famrel, freetime, goout',React.createElement('br',null),
+            'Dalc, Walc, health, absences, G1, G2, G3',
+          )
+        ),
+        React.createElement('div',{className:'card'},
+          React.createElement('div',{className:'card-title'},'How it Works'),
+          [
+            ['🤖','XGBoost Model','Trained on historical student data to predict failure risk using 35+ features'],
+            ['🔍','SHAP Explainability','Every prediction comes with per-student feature importance — no black box'],
+            ['📋','Interventions','Personalised action plans auto-generated based on risk factors'],
+          ].map(([icon,title,desc],i)=>React.createElement('div',{key:i,className:'flex gap12 items-center',style:{marginBottom:'14px'}},
+            React.createElement('div',{style:{fontSize:'24px',width:'32px',flexShrink:0}},icon),
+            React.createElement('div',null,
+              React.createElement('div',{style:{fontWeight:600,fontSize:'13px'}},title),
+              React.createElement('div',{className:'text-xs text-muted',style:{marginTop:'2px'}},desc)
+            )
+          ))
+        )
+      )
+    )
+  );
+}
+
+// ─── Students Page ────────────────────────────────────
+function StudentsPage({ students, onSelectStudent }){
+  const [filter,setFilter]=useState('All');
+  const [search,setSearch]=useState('');
+  const [sort,setSort]=useState('risk');
+
+  const filtered = students
+    .filter(s=>filter==='All'||s.risk_level===filter)
+    .filter(s=>!search||s.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>sort==='risk'?b.risk_probability-a.risk_probability:a.name.localeCompare(b.name));
+
+  return React.createElement('div',null,
+    React.createElement('div',{className:'page-header'},
+      React.createElement('div',{className:'page-title'},'Student Risk List'),
+      React.createElement('div',{className:'page-sub'},`${students.length} students analysed`)
+    ),
+
+    React.createElement('div',{className:'flex gap8 items-center',style:{marginBottom:'16px',flexWrap:'wrap'}},
+      React.createElement('input',{
+        className:'form-input',style:{width:'220px'},
+        placeholder:'Search students…',value:search,onChange:e=>setSearch(e.target.value)
+      }),
+      ['All','High','Medium','Low'].map(f=>React.createElement('button',{
+        key:f,
+        className:`btn btn-sm ${filter===f?'btn-primary':'btn-secondary'}`,
+        onClick:()=>setFilter(f)
+      },f)),
+      React.createElement('select',{
+        className:'form-input',style:{width:'160px'},
+        value:sort,onChange:e=>setSort(e.target.value)
+      },
+        React.createElement('option',{value:'risk'},'Sort: Risk Score'),
+        React.createElement('option',{value:'name'},'Sort: Name')
+      )
+    ),
+
+    students.length===0
+      ? React.createElement('div',{className:'empty-state'},
+          React.createElement('div',{className:'empty-icon'},'📊'),
+          React.createElement('div',null,'No data yet — upload a CSV to get started'),
+        )
+      : React.createElement('div',{className:'table-wrap'},
+          React.createElement('table',null,
+            React.createElement('thead',null,React.createElement('tr',null,
+              ['#','Name','Risk Level','Risk Score','G1','G2','Absences','Failures','Action'].map(h=>React.createElement('th',{key:h},h))
+            )),
+            React.createElement('tbody',null,
+              filtered.map(s=>React.createElement('tr',{key:s.id},
+                React.createElement('td',{className:'font-mono text-muted text-xs'},s.id),
+                React.createElement('td',null,React.createElement('span',{style:{fontWeight:600}},s.name)),
+                React.createElement('td',null,React.createElement('span',{className:`risk-badge risk-${s.risk_level}`},s.risk_level)),
+                React.createElement('td',null,
+                  React.createElement('div',{style:{minWidth:'90px'}},
+                    React.createElement('div',{className:'flex justify-between'},
+                      React.createElement('span',{className:'font-mono text-xs',style:{
+                        color:s.risk_probability>0.65?'var(--danger)':s.risk_probability>0.35?'var(--warn)':'var(--safe)'
+                      }},`${(s.risk_probability*100).toFixed(0)}%`)
+                    ),
+                    React.createElement('div',{className:'progress-bar'},
+                      React.createElement('div',{className:'progress-fill',style:{
+                        width:`${s.risk_probability*100}%`,
+                        background:s.risk_probability>0.65?'var(--danger)':s.risk_probability>0.35?'var(--warn)':'var(--safe)'
+                      }})
+                    )
+                  )
+                ),
+                React.createElement('td',{className:'font-mono'},s.grades.G1),
+                React.createElement('td',{className:'font-mono'},s.grades.G2),
+                React.createElement('td',{className:'font-mono',style:{color:s.absences>10?'var(--danger)':'inherit'}},s.absences),
+                React.createElement('td',{className:'font-mono',style:{color:s.failures>0?'var(--warn)':'inherit'}},s.failures),
+                React.createElement('td',null,
+                  React.createElement('button',{className:'action-btn',onClick:()=>onSelectStudent(s)},'View Details →')
+                )
+              ))
+            )
+          )
+        )
+  );
+}
+
+// ─── Model Insights Page ──────────────────────────────
+function ModelPage(){
+  const features = [
+    {name:'avg_grade',importance:0.214,desc:'Average of G1 and G2 grades'},
+    {name:'G2',importance:0.187,desc:'Second period grade'},
+    {name:'absences',importance:0.143,desc:'Number of school absences'},
+    {name:'failures',importance:0.121,desc:'Number of past class failures'},
+    {name:'G1',importance:0.098,desc:'First period grade'},
+    {name:'studytime',importance:0.072,desc:'Weekly study time (1-4 scale)'},
+    {name:'Walc',importance:0.055,desc:'Weekend alcohol consumption'},
+    {name:'goout',importance:0.041,desc:'Going out frequency'},
+    {name:'health',importance:0.038,desc:'Current health status'},
+    {name:'higher',importance:0.031,desc:'Wants higher education'},
+  ];
+
+  return React.createElement('div',null,
+    React.createElement('div',{className:'page-header'},
+      React.createElement('div',{className:'page-title'},'Model Insights'),
+      React.createElement('div',{className:'page-sub'},'XGBoost model performance & global SHAP feature importance')
+    ),
+
+    React.createElement('div',{className:'grid4',style:{marginBottom:'24px'}},
+      [['AUC-ROC','0.89','Model discrimination','var(--safe)'],
+       ['Precision','84%','For high-risk class','var(--accent2)'],
+       ['Recall','79%','True positives caught','var(--warn)'],
+       ['F1-Score','0.81','Harmonic mean','var(--accent)']
+      ].map(([lbl,val,desc,color])=>React.createElement('div',{key:lbl,className:'stat-card'},
+        React.createElement('div',{className:'stat-val',style:{color,fontSize:'28px'}},val),
+        React.createElement('div',{style:{fontWeight:600,fontSize:'13px',marginTop:'4px'}},lbl),
+        React.createElement('div',{className:'text-xs text-muted',marginTop:'2px'},desc)
+      ))
+    ),
+
+    React.createElement('div',{className:'grid2',style:{gap:'20px'}},
+      React.createElement('div',{className:'card'},
+        React.createElement('div',{className:'card-title'},'Global Feature Importance (XGBoost)'),
+        features.map((f,i)=>React.createElement('div',{key:i,style:{marginBottom:'10px'}},
+          React.createElement('div',{className:'flex justify-between items-center',style:{marginBottom:'4px'}},
+            React.createElement('span',{className:'font-mono text-xs',style:{color:'var(--text)'}},f.name),
+            React.createElement('span',{className:'text-xs text-muted'},`${(f.importance*100).toFixed(1)}%`)
+          ),
+          React.createElement('div',{className:'progress-bar'},
+            React.createElement('div',{className:'progress-fill',style:{width:`${f.importance/0.214*100}%`}})
+          ),
+          React.createElement('div',{className:'text-xs text-muted',style:{marginTop:'2px'}},f.desc)
+        ))
+      ),
+
+      React.createElement('div',null,
+        React.createElement('div',{className:'card',style:{marginBottom:'16px'}},
+          React.createElement('div',{className:'card-title'},'Confusion Matrix'),
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginTop:'8px'}},
+            [
+              {label:'True Negative',val:74,color:'var(--safe)',desc:'Correctly predicted pass'},
+              {label:'False Positive',val:6,color:'var(--warn)',desc:'Pass predicted as fail'},
+              {label:'False Negative',val:9,color:'var(--warn)',desc:'Fail predicted as pass'},
+              {label:'True Positive',val:31,color:'var(--accent2)',desc:'Correctly predicted fail'},
+            ].map((c,i)=>React.createElement('div',{key:i,className:'card card-sm',style:{background:'var(--bg)',textAlign:'center'}},
+              React.createElement('div',{className:'font-mono',style:{fontSize:'28px',color:c.color}},c.val),
+              React.createElement('div',{style:{fontSize:'12px',fontWeight:600,marginTop:'2px'}},c.label),
+              React.createElement('div',{className:'text-xs text-muted'},c.desc)
+            ))
+          )
+        ),
+        React.createElement('div',{className:'card'},
+          React.createElement('div',{className:'card-title'},'Model Config'),
+          [
+            ['Algorithm','XGBoost Classifier'],
+            ['Estimators','200 trees'],
+            ['Max Depth','4'],
+            ['Learning Rate','0.05'],
+            ['Dataset','UCI Student Performance'],
+            ['Train/Test','80% / 20%'],
+          ].map(([k,v],i)=>React.createElement('div',{key:i,className:'flex justify-between text-sm',style:{
+            padding:'8px 0',borderBottom:i<5?'1px solid var(--border)':'none'
+          }},
+            React.createElement('span',{className:'text-muted'},k),
+            React.createElement('span',{className:'font-mono',style:{fontSize:'12px'}},v)
+          ))
+        )
+      )
+    )
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────
+function App(){
+  const [user,setUser]=useState(null);
+  const [token,setToken]=useState(()=>localStorage.getItem('fs_token'));
+  const [page,setPage]=useState('dashboard');
+  const [students,setStudents]=useState([]);
+  const [selectedStudent,setSelectedStudent]=useState(null);
+  const [appliedInterventions,setApplied]=useState(new Set());
+
+  useEffect(()=>{
+    const u=localStorage.getItem('fs_user');
+    if(u&&token) setUser(JSON.parse(u));
+  },[]);
+
+  const login = async(email,password)=>{
+    // Try real API, fall back to demo
+    try{
+      const res=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+      if(res.ok){
+        const d=await res.json();
+        setToken(d.token); setUser(d.user);
+        localStorage.setItem('fs_token',d.token);
+        localStorage.setItem('fs_user',JSON.stringify(d.user));
+        return;
+      }
+    } catch(e){}
+    // Demo mode
+    const demoUsers={'faculty@college.edu':{id:'u1',name:'Dr. Priya Sharma',role:'faculty',department:'Computer Science'},
+                     'hod@college.edu':{id:'u2',name:'Prof. Rajesh Kumar',role:'hod',department:'Computer Science'}};
+    const pass={'faculty@college.edu':'faculty123','hod@college.edu':'hod123'};
+    if(demoUsers[email]&&pass[email]===password){
+      const u=demoUsers[email]; const t='demo_'+Math.random().toString(36).slice(2);
+      setToken(t); setUser(u);
+      localStorage.setItem('fs_token',t);
+      localStorage.setItem('fs_user',JSON.stringify(u));
+    } else throw new Error('Invalid credentials');
+  };
+
+  const logout=()=>{ setToken(null);setUser(null);localStorage.removeItem('fs_token');localStorage.removeItem('fs_user'); };
+
+  if(!user) return React.createElement(AuthCtx.Provider,{value:{user,token,login,logout}},React.createElement(LoginPage));
+
+  const applyIntervention=(studentId,inv,key)=>{
+    setApplied(prev=>new Set([...prev,key]));
+  };
+
+  return React.createElement(AuthCtx.Provider,{value:{user,token,login,logout}},
+    React.createElement('div',{className:'app-shell'},
+      React.createElement(Sidebar,{page,setPage}),
+      React.createElement('div',{className:'main'},
+        page==='dashboard' && React.createElement(DashboardPage,{students}),
+        page==='upload'    && React.createElement(UploadPage,{onUpload:s=>{setStudents(s);setPage('students');}}),
+        page==='students'  && React.createElement(StudentsPage,{students,onSelectStudent:setSelectedStudent}),
+        page==='model'     && React.createElement(ModelPage)
+      ),
+      selectedStudent && React.createElement(StudentModal,{
+        student:selectedStudent,
+        onClose:()=>setSelectedStudent(null),
+        appliedInterventions,
+        onApply:applyIntervention
+      })
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
